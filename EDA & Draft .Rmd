@@ -1,0 +1,129 @@
+---
+title: "EDA"
+author: "Rebecca Lu"
+date: "2023-04-28"
+output: html_document
+---
+
+# Load packages 
+library(tidyverse)
+library(tidymodels)
+library(skimr)
+library(patchwork)
+library(naniar)
+
+# Set seeds
+set.seed(2023)
+
+# Load data
+train <- read_csv("train.csv")
+
+# Quick skim on the overall data 
+skim_without_charts(train)
+
+miss_var_summary(train)
+
+miss_prop_summary(train)
+
+missing_values <- is.na(train)
+
+
+# Replace missing values with zeros
+train[missing_values] <- 0
+
+# Perform SVD
+svd(train)
+
+constant_cols <- apply(train, 2, function(x) length(unique(x)) == 1)
+zero_cols <- apply(train, 2, function(x) all(x == 0))
+
+# Remove constant or zero columns
+train_1 <- train[, !(constant_cols | zero_cols)]
+
+# Perform PCA
+pca <- prcomp(train_1, scale. = TRUE)
+summary(pca)
+
+pc_features <- predict(pca, train_1)
+
+View(pc_features)
+
+# Train a supervised model (e.g., random forest)
+library(randomForest)
+model <- randomForest(train, train_labels)
+
+# Evaluate the model
+predictions <- predict(model, test)
+confusionMatrix(predictions, test_labels)
+
+predictions <- predict(model, test)
+confusionMatrix(predictions, test_labels)
+
+# Fit a GLM model
+model <- glm(target_variable ~ ., data = train, family = binomial)
+
+# Make predictions on the test set
+predictions <- predict(model, newdata = test, type = "response")
+
+# Evaluate the performance of the model
+library(pROC)
+auc <- roc(test$target_variable, predictions)
+print(auc$auc)
+
+# Define the RNN model architecture
+model <- keras_model_sequential()
+model %>%
+  layer_lstm(units = 32, input_shape = c(dim(x)[2], dim(x)[3])) %>%
+  layer_dense(units = num_classes, activation = "softmax")
+
+# Compile the model
+model %>% compile(
+  loss = "categorical_crossentropy",
+  optimizer = optimizer_adam(),
+  metrics = c("accuracy")
+)
+
+# Train the model
+model %>% fit(
+  x_train, y_train,
+  epochs = 100,
+  batch_size = 32,
+  validation_data = list(x_test, y_test)
+)
+
+# Evaluate the model
+model %>% evaluate(x_test, y_test)
+
+
+# Convert the data to a DMatrix object
+library(xgboost)
+dtrain <- xgb.DMatrix(data = as.matrix(train[, -1]), label = train$target_variable)
+dtest <- xgb.DMatrix(data = as.matrix(test[, -1]), label = test$target_variable)
+
+# Set the hyperparameters for the XGBoost model
+params <- list(
+  objective = "binary:logistic",
+  eval_metric = "auc",
+  eta = 0.1,
+  max_depth = 5,
+  subsample = 0.8,
+  colsample_bytree = 0.8
+)
+
+# Train the XGBoost model
+model <- xgb.train(
+  params = params,
+  data = dtrain,
+  nrounds = 100,
+  watchlist = list(train = dtrain, test = dtest),
+  early_stopping_rounds = 10,
+  verbose = 0
+)
+
+# Make predictions on the test set
+predictions <- predict(model, newdata = as.matrix(test[, -1]))
+
+# Evaluate the performance of the model
+library(pROC)
+auc <- roc(test$target_variable, predictions)
+print(auc$auc)
