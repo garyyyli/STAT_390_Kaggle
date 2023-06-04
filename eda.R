@@ -346,4 +346,43 @@ finalresults <- mlp_results %>%
 
 write_csv(finalresults, "output4.csv")
 
+# model evaluation (RB)
+load(file = "rb_tune.rda")
+
+tune_results <- tibble(
+  model_type = c("rb"),
+  tune_info = list(rb_tune),
+  assessment_info = map(tune_info, collect_metrics),
+  best_model = map(tune_info, ~ select_best(.x, metric = "rmse"))
+)
+
+tune_results %>%
+  select(model_type, assessment_info) %>%
+  group_by(model_type) %>%
+  unnest(assessment_info) %>%
+  filter(.metric == "rmse") %>%
+  arrange(mean) %>%
+  rename("Model Type" = model_type)
+
+rb_workflow_tuned <- rb_workflow %>%
+  finalize_workflow(select_best(rb_tune, metric = "rmse"))
+
+rb_results <- fit(rb_workflow_tuned, train_dat)
+
+finalresults <- rb_results %>%
+  predict(new_data = test_dat) %>%
+  bind_cols(test_dat %>% select(id)) %>%
+  select(id, .pred) %>%
+  rename(Id = id) %>%
+  rename(y = .pred)
+
+write_csv(finalresults, "output5.csv")
+
+# For ensemble model
+save(data_fold, file = "data_fold.rda")
+save(test_dat, file = "test_dat.rda")
+
+# model info object
+save(wildfires_recipe, wildfires_split, file = "model_info/wildfires_recipe.rda")
+
 
