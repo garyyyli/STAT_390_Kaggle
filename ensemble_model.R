@@ -39,6 +39,8 @@ data_blend <- data_stack %>%
 # Save blended model stack for reproducibility & easy reference (Rmd report)
 save(data_blend, file = "data_blend.rda")
 
+load("test_dat.rda.nosync.rda")
+load("data_blend.rda.nosync.rda")
 # Explore the blended model stack
 data_blend
 
@@ -87,12 +89,13 @@ test_dat <- data_model_stack %>%
 # with the true value
 member_preds <- data_model_stack %>% 
   predict(test_dat, members = TRUE) %>% 
+  mutate(.pred = exp(.pred)) %>% 
   bind_cols(test_dat %>% select(id)) %>% 
   select(id, .pred) %>%
   rename(Id = id) %>%
   rename(y = .pred)
 
-write_csv(member_preds, "output6.csv")
+write_csv(member_preds, "output8.csv")
 
 # member_preds %>% 
 #   map_dfr(rmse, truth = y, data = member_preds) %>% 

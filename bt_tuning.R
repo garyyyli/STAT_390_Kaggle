@@ -8,7 +8,7 @@ library(tidymodels)
 set.seed(2023)
 
 # load required objects ----
-load("data_setup_median_pca.rda.nosync.rda")
+load("data_setup_logy_median_pca.rda.nosync.rda")
 
 # define model
 bt_model <- boost_tree(
@@ -34,7 +34,7 @@ bt_workflow <- workflow() %>%
 
 # Tuning/Fitting ----
 bt_tune <- bt_workflow %>%
-  tune_grid(resamples = data_fold, grid = bt_grid)
+  tune_grid(resamples = data_fold, grid = bt_grid, control = stacks::control_stack_grid())
 
 # Write out results & workflow
 save(bt_tune, bt_workflow, file = "bt_tune.rda")

@@ -10,7 +10,7 @@ library(kernlab)
 set.seed(2023)
 
 # load required objects ----
-load("data_setup_median_pca.rda.nosync.rda")
+load("data_setup_logy_median_pca.rda.nosync.rda")
 
 # Define model ----
 mlp_model <- mlp(
@@ -35,7 +35,7 @@ mlp_workflow <- workflow() %>%
 #tic("Multilayer Perceptron")
 
 mlp_tune <- mlp_workflow %>% 
-  tune_grid(resamples = data_fold, grid = mlp_grid)
+  tune_grid(resamples = data_fold, grid = mlp_grid, control = stacks::control_stack_grid())
 
 # Write out results & workflow
 save(mlp_tune, mlp_workflow, file = "mlp_tune.rda")

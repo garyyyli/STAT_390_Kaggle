@@ -29,7 +29,8 @@ for(i in colnames(test_dat)){
 }
 
 train_dat <- read_csv("data/train.csv.nosync.csv") %>%
-  clean_names()
+  clean_names() %>% 
+  mutate(y = log(y))
 
 # inputting NA values as column median values
 train_dat <- data.frame(train_dat)
@@ -58,7 +59,7 @@ miss_var_summary(test_dat) %>%
 # updated_train_dat <- data.frame(my_pca$x[, 0:83], y = train_dat$y)
 
 # train_dat <- na.omit(train_dat)
-# test_dat <- na.omit(test_dat)
+test_dat <- na.omit(test_dat)
 
 set_categorical <- train_dat %>% summarise_all(n_distinct)
 set_categorical <- as_tibble(cbind(nms = names(set_categorical), t(set_categorical)))
@@ -187,6 +188,8 @@ data_fold <- vfold_cv(train_dat, v = 10, repeats = 5, strata = y)
 
 data_recipe <- recipe(y ~ . , data = train_dat) %>%
   step_rm(id) %>%
+  step_impute_knn(all_predictors(), neighbors = 3) %>% 
+  step_corr(all_predictors()) %>% 
   #step_other(all_numeric_predictors(), threshold = 0.2) %>% 
   step_zv(all_predictors()) %>%
   step_normalize(all_numeric(), -y) %>%
@@ -199,7 +202,9 @@ data_recipe %>%
   juice()
 
 # saving set up code for tuning
-save(test_dat, train_dat, data_fold, data_recipe, file = "data_setup_median_pca.rda")
+save(test_dat, file = "test_dat.rda")
+# saving set up code for tuning
+save(train_dat, data_fold, data_recipe, file = "data_setup_logy_median_pca.rda")
 
 # creating the KNN recipe
 data_recipe <- recipe(y ~ . , -id, data = train_dat) %>%
@@ -347,7 +352,7 @@ finalresults <- mlp_results %>%
 write_csv(finalresults, "output4.csv")
 
 # model evaluation (RB)
-load(file = "rb_tune.rda")
+load(file = "rb_tune.rda.nosync.rda")
 
 tune_results <- tibble(
   model_type = c("rb"),
@@ -371,12 +376,13 @@ rb_results <- fit(rb_workflow_tuned, train_dat)
 
 finalresults <- rb_results %>%
   predict(new_data = test_dat) %>%
+  mutate(.pred = exp(.pred)) %>% 
   bind_cols(test_dat %>% select(id)) %>%
   select(id, .pred) %>%
   rename(Id = id) %>%
   rename(y = .pred)
 
-write_csv(finalresults, "output5.csv")
+write_csv(finalresults, "output11.csv")
 
 # For ensemble model
 save(data_fold, file = "data_fold.rda")
